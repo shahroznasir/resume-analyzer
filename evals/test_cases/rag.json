@@ -1,0 +1,20 @@
+[
+  {
+    "id": "rag_01",
+    "query": "Where does the candidate currently work and since when?",
+    "expected": "Tech Corp, starting in 2022 to the Present.",
+    "context": "1. Senior Software Engineer at Tech Corp (2022 - Present)"
+  },
+  {
+    "id": "rag_02",
+    "query": "List the programming languages mentioned in the resume.",
+    "expected": "Python, JavaScript, SQL, HTML/CSS",
+    "context": "Technical Skills: - Programming Languages: Python, JavaScript, SQL, HTML/CSS"
+  },
+  {
+    "id": "rag_03",
+    "query": "Where did the candidate obtain their education?",
+    "expected": "Bachelor of Science in Computer Science, University of Technology",
+    "context": "Bachelor of Science in Computer Science, University of Technology (2016 - 2020)"
+  }
+]

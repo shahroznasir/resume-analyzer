@@ -1,0 +1,20 @@
+[
+  {
+    "id": "faq_01",
+    "query": "Who is the candidate?",
+    "expected": "John Doe",
+    "context": "The candidate's name is John Doe."
+  },
+  {
+    "id": "faq_02",
+    "query": "What is the candidate's email?",
+    "expected": "john.doe@example.com",
+    "context": "Email: john.doe@example.com"
+  },
+  {
+    "id": "faq_03",
+    "query": "What is the contact phone number?",
+    "expected": "(123) 456-7890",
+    "context": "Phone: (123) 456-7890"
+  }
+]
