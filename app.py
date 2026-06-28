@@ -4,6 +4,7 @@ import json
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.openapi.utils import get_openapi
 from pydantic import BaseModel
 from services.document_service import extract_document_text
 from services.gemini_service import analyze_resume, batch_analyze_resumes
@@ -17,6 +18,26 @@ from services.chat_service import stream_chat_response, is_query_safe_and_releva
 
 
 app = FastAPI(title="Resume Analyzer", description="Analyze PDF, Word, and Text resumes and return structured JSON output.",)
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    if "components" in openapi_schema and "schemas" in openapi_schema["components"]:
+        for schema in openapi_schema["components"]["schemas"].values():
+            if "properties" in schema:
+                for prop in schema["properties"].values():
+                    if prop.get("type") == "array" and "items" in prop:
+                        prop["items"]["format"] = "binary"
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
