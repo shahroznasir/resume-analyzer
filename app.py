@@ -6,7 +6,8 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
 from pydantic import BaseModel
 from services.document_service import extract_document_text
-from services.gemini_service import analyze_resume
+from services.gemini_service import analyze_resume, batch_analyze_resumes
+from services.circuit_breaker import CircuitOpenException
 from prompts.resume_prompt import RESUME_ANALYSIS_PROMPT
 from models.response_models import ResumeResponse
 from services.cache_service import calculate_file_hash, get_cached_analysis, save_to_cache
@@ -102,6 +103,11 @@ async def analyze_resume_api(
         save_to_cache(file_hash, analysis_result.model_dump_json())
         save_active_resume(file.filename, file_bytes)
         return analysis_result
+    except CircuitOpenException as ce:
+        raise HTTPException(
+            status_code=503,
+            detail=str(ce)
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -125,6 +131,47 @@ async def analyze_resume_api(
     finally:
         if os.path.exists(file_path):
             os.remove(file_path)
+
+
+@app.post(
+    "/analyze-resumes-batch",
+    summary="Batch Analyze Resumes (Parallel Threads)",
+    description="Upload multiple resumes and process them in parallel threads using Circuit Breaker & Retry protection.")
+async def analyze_resumes_batch_api(
+    files: list[UploadFile] = File(...)
+):
+    if not files:
+        raise HTTPException(status_code=400, detail="No files uploaded.")
+
+    resume_items = []
+    temp_files = []
+
+    for file in files:
+        ext = os.path.splitext(file.filename)[1].lower() if file.filename else ""
+        if ext not in [".pdf", ".docx", ".txt"]:
+            continue
+
+        file_bytes = await file.read()
+        unique_filename = f"{uuid.uuid4()}{ext}"
+        file_path = os.path.join(UPLOAD_DIR, unique_filename)
+        temp_files.append(file_path)
+
+        with open(file_path, "wb") as buffer:
+            buffer.write(file_bytes)
+        text = extract_document_text(file_path)
+        if text.strip():
+            resume_items.append((file.filename, text))
+
+    try:
+        if not resume_items:
+            raise HTTPException(status_code=400, detail="None of the uploaded files contained valid extractable text.")
+
+        batch_results = batch_analyze_resumes(resume_items, RESUME_ANALYSIS_PROMPT, max_workers=min(4, len(resume_items)))
+        return {"total_processed": len(batch_results), "results": batch_results}
+    finally:
+        for tf in temp_files:
+            if os.path.exists(tf):
+                os.remove(tf)
 
 
 class ChatRequest(BaseModel):
