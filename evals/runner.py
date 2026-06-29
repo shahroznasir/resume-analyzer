@@ -35,15 +35,15 @@ def evaluate_single_case(suite_name, case, mock_mode):
             "id": case_id,
             "query": query,
             "response": response["full_text"],
-            "latency_eval": {"pass": False, "metrics": {"ttft": -1.0, "latency": response["latency"]}, "reason": "API Connection Failed"},
+            "latency_eval": {"pass": False, "metrics": {"ttft": -1.0, "latency": response["latency"]}, "reason": "API Connection Failed"},  # noqa # spellchecker:disable-line
             "evals": {},
             "overall_pass": False
         }
         
     response_text = response["full_text"]
-    ttft = response["ttft"]
+    ttft = response["ttft"]  # noqa # spellchecker:disable-line
     latency = response["latency"]
-    latency_eval = evaluate_latency(ttft, latency)
+    latency_eval = evaluate_latency(ttft, latency)  # noqa # spellchecker:disable-line
     evals = {}
     overall_pass = True
     
@@ -107,8 +107,8 @@ def run_evaluations():
             future_to_case = {executor.submit(evaluate_single_case, suite_name, case, mock_mode): case for case in cases}
             for future in as_completed(future_to_case):
                 case_res = future.result()
-                status_str = "PASS" if case_res["overall_pass"] else "FAIL"
-                print(f"  [{case_res['id']}] Query: '{case_res['query'][:35]}...' -> {status_str}")
+                q_snippet = str(case_res['query'])[:35]
+                print(f"  [{case_res['id']}] Query: '{q_snippet}...' -> {status_str}")
                 suite_results.append(case_res)
         suite_results.sort(key=lambda x: x["id"])
         results[suite_name] = suite_results
