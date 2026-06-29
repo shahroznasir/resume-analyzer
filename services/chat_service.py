@@ -1,5 +1,5 @@
 import os
-from google.genai import types
+from google.genai import types  # type: ignore # noqa
 from services.gemini_service import client, generate_content_with_retry, generate_content_stream_with_retry
 from services.document_service import extract_document_text
 from services.vector_store import vector_store

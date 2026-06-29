@@ -2,7 +2,7 @@ import os
 import re
 from typing import List, Dict, Any
 from dotenv import load_dotenv
-from google import genai
+from google import genai  # type: ignore # noqa
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 from rank_bm25 import BM25Okapi

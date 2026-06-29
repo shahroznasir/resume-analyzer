@@ -5,7 +5,7 @@ import json
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from services.gemini_service import generate_content_with_retry
-from google.genai import types
+from google.genai import types  # type: ignore # noqa
 
 def evaluate_groundedness(response: str, context: str, mock: bool = False) -> dict:
     """

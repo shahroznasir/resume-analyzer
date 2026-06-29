@@ -2,9 +2,9 @@ import os
 import time
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from google import genai
-from google.genai import types
-from google.genai.errors import APIError
+from google import genai  # type: ignore # noqa
+from google.genai import types  # type: ignore # noqa
+from google.genai.errors import APIError  # type: ignore # noqa
 
 from dotenv import load_dotenv
 from models.response_models import ResumeResponse

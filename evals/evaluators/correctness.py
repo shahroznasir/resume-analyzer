@@ -4,7 +4,7 @@ import json
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from services.gemini_service import generate_content_with_retry
-from google.genai import types
+from google.genai import types  # type: ignore # noqa
 def evaluate_correctness(query: str, response: str, expected: str, mock: bool = False) -> dict:
     """
     Evaluates semantic correctness of response compared to the expected answer.
