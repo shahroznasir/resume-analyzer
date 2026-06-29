@@ -29,13 +29,11 @@ def stream_chat_response(message: str, history: list):
     Stream chatbot response using Semantic Caching + Hybrid Vector RAG (Qdrant + BM25 + Gemini 2.5 Flash).
     Checks Semantic Cache first for 0ms instant responses, saving 100% token cost!
     """
-    # 1. Check Semantic Cache
     cached_response = semantic_cache.get_cached_response(message)
     if cached_response:
         yield f"[Instant Semantic Cache Hit (0ms)]\n{cached_response}"
         return
 
-    # 2. Hybrid RAG Search (BM25 + Qdrant Vector Search)
     retrieved_chunks = []
     try:
         retrieved_chunks = vector_store.search_similar_chunks(query=message, top_k=4)

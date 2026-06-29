@@ -3,7 +3,7 @@ import os
 import json
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from services.gemini_service import client, generate_content_with_retry
+from services.gemini_service import generate_content_with_retry
 from google.genai import types
 def evaluate_correctness(query: str, response: str, expected: str, mock: bool = False) -> dict:
     """

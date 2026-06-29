@@ -3,16 +3,10 @@ import requests
 import json
 
 st.set_page_config(page_title="Book & Document Chatbot RAG", layout="wide")
-
 API_BASE = "http://127.0.0.1:8000"
-
 st.title("Book Chatbot & Document RAG Assistant")
 st.write("Upload any Book or Document PDF/DOCX/TXT to build Qdrant vector embeddings and chat with your files!")
-
-# 3 Plain Text Tabs (No icons)
 tab1, tab2, tab3 = st.tabs(["Upload & Analyze Book", "RAG Chat Assistant", "Qdrant Knowledge Inspector"])
-
-# --- TAB 1: UPLOAD & ANALYZE BOOK ---
 with tab1:
     st.header("Upload Book / Document")
     st.write("Upload a PDF, DOCX, or TXT book to analyze and build vector embeddings.")
@@ -32,7 +26,6 @@ with tab1:
                 except Exception as e:
                     st.error("Failed to connect to backend server. Make sure uvicorn is running.")
 
-# --- TAB 2: RAG CHAT ASSISTANT ---
 with tab2:
     st.header("Chat with Book Assistant")
     st.write("Ask any questions about the uploaded book or document content.")
@@ -70,8 +63,6 @@ with tab2:
                 st.session_state.messages.append({"role": "assistant", "content": full_response})
             except Exception as e:
                 st.error(f"Error: {e}")
-
-# --- TAB 3: QDRANT KNOWLEDGE INSPECTOR ---
 with tab3:
     st.header("Qdrant Knowledge Inspector")
     st.write("Test similarity vector search directly against Qdrant storage.")

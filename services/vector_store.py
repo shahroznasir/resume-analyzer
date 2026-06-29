@@ -12,14 +12,11 @@ api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 
 if not api_key:
     raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY not found in environment.")
-
 genai_client = genai.Client(api_key=api_key)
-
 QDRANT_DB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "db", "qdrant")
 os.makedirs(QDRANT_DB_DIR, exist_ok=True)
-
 COLLECTION_NAME = "resume_chunks"
-VECTOR_SIZE = 3072  # gemini-embedding-001 vector dimension
+VECTOR_SIZE = 3072
 
 class VectorStoreManager:
     def __init__(self):
@@ -94,8 +91,6 @@ class VectorStoreManager:
                 ensure_active_resume_indexed()
         except Exception as e:
             print(f"Auto-ingestion check warning: {e}")
-
-        # 1. Fetch Dense Vector Search candidates from Qdrant
         query_vector = self.get_embedding(query)
         vector_response = self.client.query_points(
             collection_name=COLLECTION_NAME,
@@ -103,37 +98,23 @@ class VectorStoreManager:
             limit=20
         )
         vector_hits = vector_response.points
-
         if not vector_hits:
             return []
-
-        # 2. Fetch all points to run BM25 Sparse Keyword Search across collection
         all_points, _ = self.client.scroll(collection_name=COLLECTION_NAME, limit=200, with_payload=True)
         if not all_points:
             all_points = vector_hits
-
-        # Build BM25 index
         corpus_texts = [p.payload.get("text", "") for p in all_points]
         tokenized_corpus = [self._tokenize(t) for t in corpus_texts]
         bm25 = BM25Okapi(tokenized_corpus)
-        
         tokenized_query = self._tokenize(query)
         bm25_scores = bm25.get_scores(tokenized_query)
-        
-        # Sort points by BM25 score
         bm25_ranked_indices = sorted(range(len(bm25_scores)), key=lambda i: bm25_scores[i], reverse=True)
         bm25_ranks = {all_points[idx].id: rank + 1 for rank, idx in enumerate(bm25_ranked_indices)}
-
-        # Build Vector Ranks
         vector_ranks = {hit.id: rank + 1 for rank, hit in enumerate(vector_hits)}
-
-        # Combine candidate IDs
         all_candidate_ids = set(vector_ranks.keys()).union(set(bm25_ranks.keys()))
         points_map = {p.id: p for p in all_points}
         for vh in vector_hits:
             points_map[vh.id] = vh
-
-        # 3. Reciprocal Rank Fusion (RRF) Scoring
         rrf_results = []
         for pid in all_candidate_ids:
             vr = vector_ranks.get(pid, 100)
@@ -149,7 +130,6 @@ class VectorStoreManager:
                 "metadata": {k: v for k, v in p.payload.items() if k != "text"}
             })
 
-        # Sort by RRF fusion score descending
         rrf_results.sort(key=lambda x: x["score"], reverse=True)
         print(f"[HybridSearch] Merged {len(rrf_results)} candidates via BM25 + Vector RRF fusion.")
         return rrf_results[:top_k]

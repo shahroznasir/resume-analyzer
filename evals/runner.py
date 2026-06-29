@@ -110,8 +110,6 @@ def run_evaluations():
                 status_str = "PASS" if case_res["overall_pass"] else "FAIL"
                 print(f"  [{case_res['id']}] Query: '{case_res['query'][:35]}...' -> {status_str}")
                 suite_results.append(case_res)
-                
-        # Sort results back by ID order
         suite_results.sort(key=lambda x: x["id"])
         results[suite_name] = suite_results
         
