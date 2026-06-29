@@ -3,6 +3,7 @@ from google.genai import types
 from services.gemini_service import client, generate_content_with_retry, generate_content_stream_with_retry
 from services.document_service import extract_document_text
 from services.vector_store import vector_store
+from services.semantic_cache import semantic_cache
 
 RESUME_DIR = "resume"
 
@@ -25,14 +26,21 @@ def get_resume_context() -> str:
 
 def stream_chat_response(message: str, history: list):
     """
-    Stream chatbot response using Vector RAG (Qdrant + Google Embeddings + Gemini 2.5 Flash).
-    Performs top-K similarity search to retrieve relevant book/document chunks.
+    Stream chatbot response using Semantic Caching + Hybrid Vector RAG (Qdrant + BM25 + Gemini 2.5 Flash).
+    Checks Semantic Cache first for 0ms instant responses, saving 100% token cost!
     """
+    # 1. Check Semantic Cache
+    cached_response = semantic_cache.get_cached_response(message)
+    if cached_response:
+        yield f"[Instant Semantic Cache Hit (0ms)]\n{cached_response}"
+        return
+
+    # 2. Hybrid RAG Search (BM25 + Qdrant Vector Search)
     retrieved_chunks = []
     try:
         retrieved_chunks = vector_store.search_similar_chunks(query=message, top_k=4)
     except Exception as e:
-        print(f"Vector search warning/error: {e}. Falling back to full document text.")
+        print(f"Hybrid search warning/error: {e}. Falling back to full document text.")
 
     if retrieved_chunks:
         context_blocks = [f"[Chunk {idx+1}] {c['text']}" for idx, c in enumerate(retrieved_chunks)]
@@ -79,6 +87,7 @@ Instructions:
         )
     )
 
+    full_response_text = []
     try:
         response = generate_content_stream_with_retry(
             model="gemini-2.5-flash",
@@ -87,7 +96,12 @@ Instructions:
         )
         for chunk in response:
             if chunk.text:
+                full_response_text.append(chunk.text)
                 yield chunk.text
+        
+        complete_ans = "".join(full_response_text)
+        if complete_ans:
+            semantic_cache.store_cached_response(message, complete_ans)
     except Exception as e:
         print(f"Gemini API Error: {e}")
         yield f"Error: Failed to fetch response from Gemini ({e})"
