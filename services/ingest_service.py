@@ -2,7 +2,10 @@ import os
 import uuid
 from typing import List, Dict, Any
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from services.vector_store import vector_store
+from services.vector_store import vector_store, COLLECTION_NAME
+from services.document_service import extract_document_text
+
+RESUME_DIR = "resume"
 
 def ingest_document_text(text: str, source_filename: str = "active_resume") -> int:
     """
@@ -40,3 +43,19 @@ def ingest_document_text(text: str, source_filename: str = "active_resume") -> i
 
     vector_store.add_chunks(formatted_chunks)
     return len(formatted_chunks)
+
+def ensure_active_resume_indexed():
+    """Checks if Qdrant collection is empty and automatically indexes any resume file found in resume/ folder."""
+    try:
+        count = vector_store.client.count(COLLECTION_NAME).count
+        if count == 0 and os.path.exists(RESUME_DIR):
+            for filename in os.listdir(RESUME_DIR):
+                if filename.lower().endswith((".pdf", ".docx", ".txt")):
+                    file_path = os.path.join(RESUME_DIR, filename)
+                    text = extract_document_text(file_path)
+                    if text.strip():
+                        print(f"Auto-indexing active resume '{filename}' into Qdrant...")
+                        ingest_document_text(text, filename)
+                        break
+    except Exception as e:
+        print(f"Warning in ensure_active_resume_indexed: {e}")

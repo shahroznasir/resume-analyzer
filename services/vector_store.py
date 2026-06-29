@@ -79,6 +79,13 @@ class VectorStoreManager:
 
     def search_similar_chunks(self, query: str, top_k: int = 4) -> List[Dict[str, Any]]:
         """Search top-K most relevant resume chunks for a user query."""
+        try:
+            if self.client.count(COLLECTION_NAME).count == 0:
+                from services.ingest_service import ensure_active_resume_indexed
+                ensure_active_resume_indexed()
+        except Exception as e:
+            print(f"Auto-ingestion check warning: {e}")
+
         query_vector = self.get_embedding(query)
         response = self.client.query_points(
             collection_name=COLLECTION_NAME,
