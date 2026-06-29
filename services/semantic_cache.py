@@ -1,6 +1,5 @@
-import os
 import uuid
-from typing import Optional, Tuple
+from typing import Optional
 from services.vector_store import vector_store, VECTOR_SIZE
 from qdrant_client.models import Distance, VectorParams, PointStruct
 
@@ -10,7 +9,8 @@ class SemanticCacheManager:
     def __init__(self):
         self._ensure_cache_collection()
 
-    def _ensure_cache_collection(self):
+    @staticmethod
+    def _ensure_cache_collection():
         try:
             collections = [c.name for c in vector_store.client.get_collections().collections]
             if CACHE_COLLECTION not in collections:
@@ -22,7 +22,8 @@ class SemanticCacheManager:
         except Exception as e:
             print(f"[SemanticCache] Warning ensuring cache collection: {e}")
 
-    def get_cached_response(self, query: str, similarity_threshold: float = 0.80) -> Optional[str]:
+    @staticmethod
+    def get_cached_response(query: str, similarity_threshold: float = 0.80) -> Optional[str]:
         """
         Checks if a semantically similar query exists in cache.
         Returns cached response string if similarity >= threshold, else None.
@@ -43,7 +44,8 @@ class SemanticCacheManager:
             print(f"[SemanticCache] Lookup warning: {e}")
         return None
 
-    def store_cached_response(self, query: str, response_text: str):
+    @staticmethod
+    def store_cached_response(query: str, response_text: str):
         """Stores query embedding and response into semantic cache."""
         if not response_text.strip() or "Error:" in response_text:
             return
