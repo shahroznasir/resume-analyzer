@@ -1,13 +1,13 @@
 import os
 from datetime import datetime, timezone
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from dotenv import load_dotenv
 
 load_dotenv()
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
