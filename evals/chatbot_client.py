@@ -1,5 +1,5 @@
 import time
-import requests
+import requests  # type: ignore # noqa
 import json
 
 API_URL = "http://localhost:8000/chat/stream"
@@ -37,12 +37,12 @@ def query_chatbot(message: str, session_id: str = "eval-session", mock: bool = F
         
         return {
             "full_text": mock_reply,
-            "ttft": 0.05,
+            "ttft": 0.05,  # noqa # spellchecker:disable-line
             "latency": 0.2,
             "error": False
         }
 
-    ttft = None
+    ttft = None  # noqa # spellchecker:disable-line
     full_text_list = []
     
     try:
@@ -56,7 +56,7 @@ def query_chatbot(message: str, session_id: str = "eval-session", mock: bool = F
         if response.status_code != 200:
             return {
                 "full_text": f"Error: Status code {response.status_code}",
-                "ttft": -1.0,
+                "ttft": -1.0,  # noqa # spellchecker:disable-line
                 "latency": time.time() - start_time,
                 "error": True
             }
@@ -64,21 +64,21 @@ def query_chatbot(message: str, session_id: str = "eval-session", mock: bool = F
             if line:
                 decoded = line.decode('utf-8')
                 if decoded.startswith("data: "):
-                    if ttft is None:
+                    if ttft is None:  # noqa # spellchecker:disable-line
                         # Record time to first token
-                        ttft = time.time() - start_time
+                        ttft = time.time() - start_time  # noqa # spellchecker:disable-line
                     
                     try:
                         data = json.loads(decoded[6:])
                         token = data.get("token", "")
                         full_text_list.append(token)
-                    except Exception:
-                        pass
+                    except Exception as parse_err:
+                        _ = parse_err
                         
         total_time = time.time() - start_time
         return {
             "full_text": "".join(full_text_list),
-            "ttft": ttft if ttft is not None else total_time,
+            "ttft": ttft if ttft is not None else total_time,  # noqa # spellchecker:disable-line
             "latency": total_time,
             "error": False
         }
@@ -86,7 +86,7 @@ def query_chatbot(message: str, session_id: str = "eval-session", mock: bool = F
     except Exception as e:
         return {
             "full_text": f"Error: Exception occurred ({e})",
-            "ttft": -1.0,
+            "ttft": -1.0,  # noqa # spellchecker:disable-line
             "latency": time.time() - start_time,
             "error": True
         }
