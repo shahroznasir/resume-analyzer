@@ -8,7 +8,7 @@ st.set_page_config(page_title="Resume Analyzer & Vector RAG Assistant", page_ico
 API_BASE = "http://127.0.0.1:8000"
 
 st.title("📄 Resume Analyzer & RAG Candidate Assistant")
-st.markdown("Powered by **Gemini 2.5 Flash**, **Google text-embedding-004**, **Qdrant Vector DB**, and **FastAPI**.")
+st.markdown("Powered by **Gemini 2.5 Flash**, **Google gemini-embedding-001**, **Qdrant Vector DB**, and **FastAPI**.")
 
 tabs = st.tabs(["📤 Upload & Analyze Resume", "💬 RAG Chat Assistant", "🔍 Qdrant Knowledge Inspector"])
 
