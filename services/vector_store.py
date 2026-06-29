@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from google import genai  # type: ignore # noqa
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
-from rank_bm25 import BM25Okapi
+from rank_bm25 import BM25Okapi  # type: ignore # noqa
 
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
@@ -46,7 +46,8 @@ class VectorStoreManager:
         except Exception as e:
             print(f"[VectorStore] Error ensuring collection: {e}")
 
-    def get_embedding(self, text: str) -> List[float]:
+    @staticmethod
+    def get_embedding(text: str) -> List[float]:
         """Generate embedding vector using Google gemini-embedding-001 model."""
         response = genai_client.models.embed_content(
             model="gemini-embedding-001",
@@ -76,7 +77,8 @@ class VectorStoreManager:
             self.client.upsert(collection_name=COLLECTION_NAME, points=points)
             print(f"[VectorStore] Upserted {len(points)} vector chunks into Qdrant collection '{COLLECTION_NAME}'.")
 
-    def _tokenize(self, text: str) -> List[str]:
+    @staticmethod
+    def _tokenize(text: str) -> List[str]:
         """Simple alphanumeric tokenizer for BM25 keyword matching."""
         return re.findall(r'\w+', text.lower())
 
@@ -94,7 +96,7 @@ class VectorStoreManager:
         query_vector = self.get_embedding(query)
         vector_response = self.client.query_points(
             collection_name=COLLECTION_NAME,
-            query=query_vector,
+            query=query_vector,  # type: ignore # noqa
             limit=20
         )
         vector_hits = vector_response.points
@@ -114,7 +116,7 @@ class VectorStoreManager:
         all_candidate_ids = set(vector_ranks.keys()).union(set(bm25_ranks.keys()))
         points_map = {p.id: p for p in all_points}
         for vh in vector_hits:
-            points_map[vh.id] = vh
+            points_map[vh.id] = vh  # type: ignore # noqa
         rrf_results = []
         for pid in all_candidate_ids:
             vr = vector_ranks.get(pid, 100)
