@@ -107,6 +107,7 @@ def run_evaluations():
             future_to_case = {executor.submit(evaluate_single_case, suite_name, case, mock_mode): case for case in cases}
             for future in as_completed(future_to_case):
                 case_res = future.result()
+                status_str = "PASS" if case_res["overall_pass"] else "FAIL"
                 q_snippet = str(case_res['query'])[:35]
                 print(f"  [{case_res['id']}] Query: '{q_snippet}...' -> {status_str}")
                 suite_results.append(case_res)
