@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -15,7 +15,7 @@ class ChatMessage(Base):
     session_id = Column(String(255), index=True)
     role = Column(String(50))  # 'user' or 'model'
     content = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 db_url = os.getenv("DATABASE_URL")
 engine = None
@@ -25,9 +25,9 @@ if db_url:
         engine = create_engine(db_url)
         with engine.connect() as conn:
             pass
-        print("Connected to PostgreSQL database successfully.")
-    except Exception as e:
-        print(f"Failed to connect to PostgreSQL. Error: {e}")
+        print("Connected to PostgreSQL database successfully.")  # noqa # spellchecker:disable-line
+    except Exception as db_conn_err:
+        print(f"Failed to connect to PostgreSQL. Error: {db_conn_err}")  # noqa # spellchecker:disable-line
         print("Falling back to local SQLite database...")
         engine = None
 
@@ -46,8 +46,8 @@ def save_message_to_db(session_id: str, role: str, content: str):
         msg = ChatMessage(session_id=session_id, role=role, content=content)
         db.add(msg)
         db.commit()
-    except Exception as e:
-        print(f"Error saving message to DB: {e}")
+    except Exception as save_err:
+        print(f"Error saving message to DB: {save_err}")
     finally:
         db.close()
 
@@ -56,8 +56,8 @@ def get_history_from_db(session_id: str):
     try:
         messages = db.query(ChatMessage).filter(ChatMessage.session_id == session_id).order_by(ChatMessage.created_at.asc()).all()
         return [{"role": msg.role, "content": msg.content} for msg in messages]
-    except Exception as e:
-        print(f"Error retrieving history from DB: {e}")
+    except Exception as hist_err:
+        print(f"Error retrieving history from DB: {hist_err}")
         return []
     finally:
         db.close()
