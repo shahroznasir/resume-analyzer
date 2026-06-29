@@ -1,6 +1,6 @@
 import os
 import json
-import redis
+import redis  # type: ignore # noqa
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,8 +13,8 @@ try:
     redis_client = redis.Redis.from_url(redis_url, socket_timeout=2)
     redis_client.ping()
     print("Connected to Redis successfully.")
-except Exception as e:
-    print(f"Failed to connect to Redis. Error: {e}")
+except Exception as redis_conn_err:
+    print(f"Failed to connect to Redis. Error: {redis_conn_err}")
     print("Falling back to local In-Memory memory cache...")
     redis_client = None
 
@@ -28,8 +28,8 @@ def get_session_memory(session_id: str) -> list:
             if data:
                 return json.loads(data)
             return []
-        except Exception as e:
-            print(f"Error reading from Redis: {e}")
+        except Exception as redis_read_err:
+            print(f"Error reading from Redis: {redis_read_err}")
     return in_memory_cache.get(session_id, [])
 
 def save_session_memory(session_id: str, history: list) -> None:
@@ -39,8 +39,8 @@ def save_session_memory(session_id: str, history: list) -> None:
             key = f"chat_session:{session_id}"
             redis_client.setex(key, SESSION_TTL, json.dumps(history))
             return
-        except Exception as e:
-            print(f"Error writing to Redis: {e}")
+        except Exception as redis_write_err:
+            print(f"Error writing to Redis: {redis_write_err}")
     in_memory_cache[session_id] = history
 
 def update_session_memory(session_id: str, role: str, content: str) -> list:
@@ -59,7 +59,7 @@ def clear_session_memory(session_id: str) -> None:
             key = f"chat_session:{session_id}"
             redis_client.delete(key)
             return
-        except Exception as e:
-            print(f"Error deleting key from Redis: {e}")
+        except Exception as redis_del_err:
+            print(f"Error deleting key from Redis: {redis_del_err}")
     if session_id in in_memory_cache:
         del in_memory_cache[session_id]
