@@ -21,17 +21,31 @@ VECTOR_SIZE = 3072  # gemini-embedding-001 vector dimension
 
 class VectorStoreManager:
     def __init__(self):
-        self.client = QdrantClient(path=QDRANT_DB_DIR)
-        self._ensure_collection()
+        self._client = None
+
+    @property
+    def client(self) -> QdrantClient:
+        """Lazily initialize Qdrant client with automatic fallback to in-memory mode if disk storage is locked."""
+        if self._client is None:
+            try:
+                self._client = QdrantClient(path=QDRANT_DB_DIR)
+            except Exception as e:
+                print(f"[VectorStore] Warning: Local storage locked ({e}). Falling back to in-memory Qdrant instance...")
+                self._client = QdrantClient(":memory:")
+            self._ensure_collection()
+        return self._client
 
     def _ensure_collection(self):
-        collections = [c.name for c in self.client.get_collections().collections]
-        if COLLECTION_NAME not in collections:
-            print(f"Creating Qdrant collection '{COLLECTION_NAME}' (dim={VECTOR_SIZE})...")
-            self.client.create_collection(
-                collection_name=COLLECTION_NAME,
-                vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE)
-            )
+        try:
+            collections = [c.name for c in self.client.get_collections().collections]
+            if COLLECTION_NAME not in collections:
+                print(f"[VectorStore] Creating Qdrant collection '{COLLECTION_NAME}' (dim={VECTOR_SIZE})...")
+                self.client.create_collection(
+                    collection_name=COLLECTION_NAME,
+                    vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE)
+                )
+        except Exception as e:
+            print(f"[VectorStore] Error ensuring collection: {e}")
 
     def get_embedding(self, text: str) -> List[float]:
         """Generate embedding vector using Google gemini-embedding-001 model."""
@@ -61,7 +75,7 @@ class VectorStoreManager:
 
         if points:
             self.client.upsert(collection_name=COLLECTION_NAME, points=points)
-            print(f"Upserted {len(points)} vector chunks into Qdrant collection '{COLLECTION_NAME}'.")
+            print(f"[VectorStore] Upserted {len(points)} vector chunks into Qdrant collection '{COLLECTION_NAME}'.")
 
     def search_similar_chunks(self, query: str, top_k: int = 4) -> List[Dict[str, Any]]:
         """Search top-K most relevant resume chunks for a user query."""
@@ -85,8 +99,8 @@ class VectorStoreManager:
         try:
             self.client.delete_collection(collection_name=COLLECTION_NAME)
             self._ensure_collection()
-            print(f"Cleared Qdrant collection '{COLLECTION_NAME}'.")
+            print(f"[VectorStore] Cleared Qdrant collection '{COLLECTION_NAME}'.")
         except Exception as e:
-            print(f"Error clearing Qdrant collection: {e}")
+            print(f"[VectorStore] Error clearing Qdrant collection: {e}")
 
 vector_store = VectorStoreManager()
