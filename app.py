@@ -7,6 +7,7 @@ from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.openapi.utils import get_openapi
 from pydantic import BaseModel
 from services.document_service import extract_document_text
+from services.ingest_service import ingest_document_text
 from services.gemini_service import analyze_resume, batch_analyze_resumes
 from services.circuit_breaker import CircuitOpenException
 from prompts.resume_prompt import RESUME_ANALYSIS_PROMPT
@@ -89,6 +90,17 @@ async def analyze_resume_api(
         cached_result = get_cached_analysis(file_hash)
         if cached_result:
             save_active_resume(file.filename, file_bytes)
+            # Re-ingest document text into Qdrant for RAG vector retrieval
+            try:
+                unique_tmp = f"cached_{uuid.uuid4()}{ext}"
+                tmp_p = os.path.join(UPLOAD_DIR, unique_tmp)
+                with open(tmp_p, "wb") as b:
+                    b.write(file_bytes)
+                txt = extract_document_text(tmp_p)
+                os.remove(tmp_p)
+                ingest_document_text(txt, file.filename)
+            except Exception as e:
+                print(f"Vector ingestion warning for cached file: {e}")
             return ResumeResponse.model_validate_json(cached_result)
     except Exception as e:
         raise HTTPException(
@@ -123,6 +135,7 @@ async def analyze_resume_api(
 
         save_to_cache(file_hash, analysis_result.model_dump_json())
         save_active_resume(file.filename, file_bytes)
+        ingest_document_text(resume_text, file.filename)
         return analysis_result
     except CircuitOpenException as ce:
         raise HTTPException(

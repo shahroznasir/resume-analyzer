@@ -2,11 +2,12 @@ import os
 from google.genai import types
 from services.gemini_service import client, generate_content_with_retry, generate_content_stream_with_retry
 from services.document_service import extract_document_text
+from services.vector_store import vector_store
 
 RESUME_DIR = "resume"
 
 def get_resume_context() -> str:
-    """Scan resume/ directory and extract text from the first supported file found."""
+    """Scan resume/ directory and extract raw text from the first supported file found."""
     if not os.path.exists(RESUME_DIR):
         os.makedirs(RESUME_DIR, exist_ok=True)
         return ""
@@ -17,28 +18,40 @@ def get_resume_context() -> str:
             try:
                 text = extract_document_text(file_path)
                 if text.strip():
-                    print(f"Loaded resume context from {filename} ({len(text)} chars)")
                     return text
             except Exception as e:
                 print(f"Error reading resume file {filename}: {e}")
     return ""
 
 def stream_chat_response(message: str, history: list):
-    """Stream chatbot response using Gemini 2.5 Flash with the resume context and career instructions."""
-    resume_text = get_resume_context()
-    
-    if not resume_text:
-        resume_context_str = "No resume has been uploaded by the candidate yet."
+    """
+    Stream chatbot response using Vector RAG (Qdrant + Google Embeddings + Gemini 2.5 Flash).
+    Performs top-K similarity search to retrieve relevant resume chunks.
+    """
+    retrieved_chunks = []
+    try:
+        retrieved_chunks = vector_store.search_similar_chunks(query=message, top_k=4)
+    except Exception as e:
+        print(f"Vector search warning/error: {e}. Falling back to full resume text.")
+
+    if retrieved_chunks:
+        context_blocks = [f"[Chunk {idx+1}] {c['text']}" for idx, c in enumerate(retrieved_chunks)]
+        retrieved_context_str = "\n\n".join(context_blocks)
+        rag_context_prompt = f"Retrieved Resume Knowledge Chunks (Qdrant Vector DB):\n---\n{retrieved_context_str}\n---"
     else:
-        resume_context_str = f"Candidate Resume Content:\n---\n{resume_text}\n---"
+        full_text = get_resume_context()
+        if full_text:
+            rag_context_prompt = f"Candidate Resume Content:\n---\n{full_text}\n---"
+        else:
+            rag_context_prompt = "No resume has been uploaded by the candidate yet."
 
     system_prompt = f"""
 You are a professional career advisor and personal assistant representing the candidate.
-Here is the context:
-{resume_context_str}
+Here is the retrieved context from the vector database:
+{rag_context_prompt}
 
 Instructions:
-1. Answer questions based on the candidate's resume, experience, skills, and education.
+1. Answer questions accurately based on the retrieved candidate's resume context, experience, skills, and education.
 2. Only answer queries that are related to the candidate's career, professional experience, education, skills, career aspirations, or professional fit for jobs.
 3. If the user asks general questions that are unrelated to the candidate's career, professional path, or resume (for example: "what is the capital of France?", "tell me a recipe for pizza", "write a python script to sort a list"), politely decline. State that you are a career assistant for the candidate and only answer career, resume, and professional queries.
 4. Be professional, objective, encouraging, and helpful.
@@ -117,7 +130,5 @@ def is_query_safe_and_relevant(message: str) -> bool:
             print(f"Guardrail trigger: Semantic classifier blocked query '{message}' (result: {result})")
             return False
     except Exception as e:
-        # Fallback to True if API fails so we don't break functionality
         print(f"Guardrail error during API check: {e}")
         return True
-
