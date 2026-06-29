@@ -62,6 +62,8 @@ def analyze_resume(resume_text: str, system_prompt: str) -> ResumeResponse:
             print(f"Transient APIError ({e.code}) in analyze_resume: {e}. Retrying in {delay:.2f}s (Attempt {attempt + 1}/{max_retries})")
             time.sleep(delay)
 
+    raise RuntimeError("Failed to complete analyze_resume after max retries.")
+
 
 def generate_content_with_retry(model: str, contents, config, max_retries=3, base_delay=3.0):
     """Executes client.models.generate_content with Circuit Breaker and Backoff Retries."""
@@ -87,6 +89,8 @@ def generate_content_with_retry(model: str, contents, config, max_retries=3, bas
             delay = (20.0 if is_rate_limit else base_delay) * (1.5 ** attempt) + random.uniform(0.1, 1.0)
             print(f"APIError ({e.code}) in generate_content. Retrying in {delay:.2f}s... (Attempt {attempt + 1}/{max_retries})")
             time.sleep(delay)
+
+    raise RuntimeError("Failed to complete generate_content after max retries.")
 
 
 def generate_content_stream_with_retry(model: str, contents, config, max_retries=3, base_delay=3.0):
@@ -122,6 +126,8 @@ def generate_content_stream_with_retry(model: str, contents, config, max_retries
             delay = (20.0 if is_rate_limit else base_delay) * (1.5 ** attempt) + random.uniform(0.1, 1.0)
             print(f"APIError in stream ({getattr(e, 'code', 'Error')}). Retrying in {delay:.2f}s... (Attempt {attempt + 1}/{max_retries})")
             time.sleep(delay)
+
+    raise RuntimeError("Failed to complete generate_content_stream after max retries.")
 
 
 def batch_analyze_resumes(resume_items: list[tuple[str, str]], system_prompt: str, max_workers: int = 4) -> list[dict]:
