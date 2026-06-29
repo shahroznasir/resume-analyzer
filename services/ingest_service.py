@@ -1,7 +1,5 @@
 import os
-import uuid
-from typing import List, Dict, Any
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter  # type: ignore # noqa
 from services.vector_store import vector_store, COLLECTION_NAME
 from services.document_service import extract_document_text
 
