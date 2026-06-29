@@ -23,9 +23,9 @@ with tab1:
             with st.spinner("Analyzing document and indexing into Qdrant Vector DB..."):
                 files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
                 try:
-                    res = requests.post(f"{API_BASE}/analyze-resume", files=files)
+                    res = requests.post(f"{API_BASE}/upload-book", files=files)
                     if res.status_code == 200:
-                        st.success("Book successfully analyzed and indexed into Qdrant!")
+                        st.success(res.json().get("message", "Book successfully indexed into Qdrant!"))
                         st.json(res.json())
                     else:
                         st.error(f"Error ({res.status_code}): {res.text}")

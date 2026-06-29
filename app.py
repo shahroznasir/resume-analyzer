@@ -128,15 +128,26 @@ async def analyze_resume_api(
                 )
             )
 
-        analysis_result = analyze_resume(
-            resume_text,
-            RESUME_ANALYSIS_PROMPT
-        )
-
-        save_to_cache(file_hash, analysis_result.model_dump_json())
-        save_active_resume(file.filename, file_bytes)
-        ingest_document_text(resume_text, file.filename)
-        return analysis_result
+        try:
+            analysis_result = analyze_resume(
+                resume_text,
+                RESUME_ANALYSIS_PROMPT
+            )
+            save_to_cache(file_hash, analysis_result.model_dump_json())
+            save_active_resume(file.filename, file_bytes)
+            ingest_document_text(resume_text, file.filename)
+            return analysis_result
+        except Exception as eval_err:
+            print(f"Resume JSON analysis fallback (large file/book): {eval_err}")
+            save_active_resume(file.filename, file_bytes)
+            num_chunks = ingest_document_text(resume_text, file.filename)
+            return ResumeResponse(
+                candidate_name=file.filename,
+                summary=f"Book/Document '{file.filename}' processed successfully ({num_chunks} vector chunks indexed into Qdrant).",
+                key_skills=["Document Vector Search", "Qdrant RAG"],
+                work_experience=[],
+                education=[]
+            )
     except CircuitOpenException as ce:
         raise HTTPException(
             status_code=503,
@@ -160,8 +171,52 @@ async def analyze_resume_api(
             )
         raise HTTPException(
             status_code=500,
-            detail=f"Error processing resume: {error_message}"
+            detail=f"Error processing document: {error_message}"
         )
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+
+@app.post(
+    "/upload-book",
+    summary="Upload and Index Book",
+    description="Upload a PDF, DOCX, or TXT book/document to extract text and index vector chunks into Qdrant DB.")
+async def upload_book_api(
+    file: UploadFile = File(...)
+):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided.")
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in [".pdf", ".docx", ".txt"]:
+        raise HTTPException(status_code=400, detail="Only PDF, DOCX, and TXT files are supported.")
+
+    file_bytes = await file.read()
+    unique_filename = f"{uuid.uuid4()}{ext}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+
+    try:
+        with open(file_path, "wb") as buffer:
+            buffer.write(file_bytes)
+        book_text = extract_document_text(file_path)
+
+        if not book_text.strip():
+            raise HTTPException(status_code=400, detail="The uploaded file does not contain extractable text.")
+
+        save_active_resume(file.filename, file_bytes)
+        num_chunks = ingest_document_text(book_text, file.filename)
+
+        return {
+            "status": "success",
+            "filename": file.filename,
+            "total_chunks": num_chunks,
+            "message": f"Successfully indexed '{file.filename}' into {num_chunks} vector chunks in Qdrant DB."
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing book: {str(e)}")
     finally:
         if os.path.exists(file_path):
             os.remove(file_path)
