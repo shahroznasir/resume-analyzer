@@ -2,30 +2,30 @@ import streamlit as st
 import requests
 import json
 
-st.set_page_config(page_title="Resume Analyzer & RAG Assistant", layout="wide")
+st.set_page_config(page_title="Book & Document Chatbot RAG", layout="wide")
 
 API_BASE = "http://127.0.0.1:8000"
 
-st.title("Resume Analyzer & RAG Candidate Assistant")
-st.write("A simple AI tool to analyze resumes, search vectors, and chat with candidate knowledge.")
+st.title("Book Chatbot & Document RAG Assistant")
+st.write("Upload any Book or Document PDF/DOCX/TXT to build Qdrant vector embeddings and chat with your files!")
 
 # 3 Plain Text Tabs (No icons)
-tab1, tab2, tab3 = st.tabs(["Upload & Analyze Resume", "RAG Chat Assistant", "Qdrant Knowledge Inspector"])
+tab1, tab2, tab3 = st.tabs(["Upload & Analyze Book", "RAG Chat Assistant", "Qdrant Knowledge Inspector"])
 
-# --- TAB 1: UPLOAD & ANALYZE ---
+# --- TAB 1: UPLOAD & ANALYZE BOOK ---
 with tab1:
-    st.header("Upload Resume")
-    st.write("Upload a PDF, DOCX, or TXT resume to analyze and build vector embeddings.")
+    st.header("Upload Book / Document")
+    st.write("Upload a PDF, DOCX, or TXT book to analyze and build vector embeddings.")
     
     uploaded_file = st.file_uploader("Choose a file", type=["pdf", "docx", "txt"])
     if uploaded_file is not None:
-        if st.button("Analyze & Index Resume"):
-            with st.spinner("Analyzing resume and indexing into Qdrant Vector DB..."):
+        if st.button("Analyze & Index Book"):
+            with st.spinner("Analyzing document and indexing into Qdrant Vector DB..."):
                 files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
                 try:
                     res = requests.post(f"{API_BASE}/analyze-resume", files=files)
                     if res.status_code == 200:
-                        st.success("Resume successfully analyzed and indexed into Qdrant!")
+                        st.success("Book successfully analyzed and indexed into Qdrant!")
                         st.json(res.json())
                     else:
                         st.error(f"Error ({res.status_code}): {res.text}")
@@ -34,10 +34,10 @@ with tab1:
 
 # --- TAB 2: RAG CHAT ASSISTANT ---
 with tab2:
-    st.header("Chat with Candidate Assistant")
-    st.write("Ask any career or professional questions about the candidate.")
+    st.header("Chat with Book Assistant")
+    st.write("Ask any questions about the uploaded book or document content.")
     
-    session_id = st.text_input("Session ID", value="session-01")
+    session_id = st.text_input("Session ID", value="book-session-01")
     
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -46,7 +46,7 @@ with tab2:
         with st.chat_message(msg["role"]):
             st.write(msg["content"])
 
-    if user_query := st.chat_input("Ask a question about the candidate..."):
+    if user_query := st.chat_input("Ask a question about the book..."):
         st.session_state.messages.append({"role": "user", "content": user_query})
         with st.chat_message("user"):
             st.write(user_query)
@@ -76,7 +76,7 @@ with tab3:
     st.header("Qdrant Knowledge Inspector")
     st.write("Test similarity vector search directly against Qdrant storage.")
     
-    test_query = st.text_input("Enter query to inspect matching chunks:", value="experience")
+    test_query = st.text_input("Enter query to inspect matching chunks:", value="summary")
     if st.button("Search Qdrant Vectors"):
         if test_query:
             try:

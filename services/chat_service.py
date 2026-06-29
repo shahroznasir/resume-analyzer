@@ -20,42 +20,40 @@ def get_resume_context() -> str:
                 if text.strip():
                     return text
             except Exception as e:
-                print(f"Error reading resume file {filename}: {e}")
+                print(f"Error reading document file {filename}: {e}")
     return ""
 
 def stream_chat_response(message: str, history: list):
     """
     Stream chatbot response using Vector RAG (Qdrant + Google Embeddings + Gemini 2.5 Flash).
-    Performs top-K similarity search to retrieve relevant resume chunks.
+    Performs top-K similarity search to retrieve relevant book/document chunks.
     """
     retrieved_chunks = []
     try:
         retrieved_chunks = vector_store.search_similar_chunks(query=message, top_k=4)
     except Exception as e:
-        print(f"Vector search warning/error: {e}. Falling back to full resume text.")
+        print(f"Vector search warning/error: {e}. Falling back to full document text.")
 
     if retrieved_chunks:
         context_blocks = [f"[Chunk {idx+1}] {c['text']}" for idx, c in enumerate(retrieved_chunks)]
         retrieved_context_str = "\n\n".join(context_blocks)
-        rag_context_prompt = f"Retrieved Resume Knowledge Chunks (Qdrant Vector DB):\n---\n{retrieved_context_str}\n---"
+        rag_context_prompt = f"Retrieved Book/Document Knowledge Chunks (Qdrant Vector DB):\n---\n{retrieved_context_str}\n---"
     else:
         full_text = get_resume_context()
         if full_text:
-            rag_context_prompt = f"Candidate Resume Content:\n---\n{full_text}\n---"
+            rag_context_prompt = f"Book/Document Content:\n---\n{full_text}\n---"
         else:
-            rag_context_prompt = "No resume has been uploaded by the candidate yet."
+            rag_context_prompt = "No book or document has been uploaded yet."
 
     system_prompt = f"""
-You are a professional career advisor and personal assistant representing the candidate.
-Here is the retrieved context from the vector database:
+You are an intelligent Book and Document RAG Assistant powered by Qdrant and Gemini AI.
+Here is the retrieved context knowledge from the vector database:
 {rag_context_prompt}
 
 Instructions:
-1. Answer questions accurately based on the retrieved candidate's resume context, experience, skills, and education.
-2. Only answer queries that are related to the candidate's career, professional experience, education, skills, career aspirations, or professional fit for jobs.
-3. If the user asks general questions that are unrelated to the candidate's career, professional path, or resume (for example: "what is the capital of France?", "tell me a recipe for pizza", "write a python script to sort a list"), politely decline. State that you are a career assistant for the candidate and only answer career, resume, and professional queries.
-4. Be professional, objective, encouraging, and helpful.
-5. Use the multi-turn conversation memory provided to understand the context of previous messages.
+1. Answer the user's questions accurately and concisely based on the retrieved book/document context.
+2. If the question can be answered from the retrieved context, explain clearly with details from the text.
+3. Be helpful, professional, and articulate. Use multi-turn conversation memory to understand context.
 """
 
     config = types.GenerateContentConfig(
@@ -97,9 +95,7 @@ Instructions:
 
 def is_query_safe_and_relevant(message: str) -> bool:
     """
-    Checks if the user query is career-related and safe using a dual check:
-    1. Programmatic check for blocked keywords/patterns.
-    2. Zero-temperature quick classification check using Gemini 2.5 Flash.
+    Checks if the user query is safe from malicious prompt injection attacks.
     """
     blocked_keywords = [
         "jailbreak", "ignore instructions", "bypass security", 
@@ -110,25 +106,4 @@ def is_query_safe_and_relevant(message: str) -> bool:
         if keyword in message_lower:
             print(f"Guardrail trigger: Programmatic keyword '{keyword}' found.")
             return False
-    classification_prompt = f"""
-    You are a guardrail filter. Analyze the user's input.
-    Is this input related to career, resume, work experience, jobs, skills, education, or professional fit?
-    Answer ONLY 'YES' or 'NO'. No other words or punctuation.
-
-    User Input: "{message}"
-    """
-    try:
-        response = generate_content_with_retry(
-            model="gemini-2.5-flash",
-            contents=classification_prompt,
-            config=types.GenerateContentConfig(temperature=0.0)
-        )
-        result = response.text.strip().upper()
-        if "YES" in result:
-            return True
-        else:
-            print(f"Guardrail trigger: Semantic classifier blocked query '{message}' (result: {result})")
-            return False
-    except Exception as e:
-        print(f"Guardrail error during API check: {e}")
-        return True
+    return True
