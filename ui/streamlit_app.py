@@ -2,15 +2,15 @@ import streamlit as st
 import requests
 import json
 
-st.set_page_config(page_title="Resume Analyzer & RAG Assistant", page_icon="📄", layout="wide")
+st.set_page_config(page_title="Resume Analyzer & RAG Assistant", layout="wide")
 
 API_BASE = "http://127.0.0.1:8000"
 
-st.title("📄 Resume Analyzer & RAG Candidate Assistant")
+st.title("Resume Analyzer & RAG Candidate Assistant")
 st.write("A simple AI tool to analyze resumes, search vectors, and chat with candidate knowledge.")
 
-# 3 Clear, Beginner-Friendly Tabs
-tab1, tab2, tab3 = st.tabs(["📤 Upload & Analyze Resume", "💬 RAG Chat Assistant", "🔍 Qdrant Knowledge Inspector"])
+# 3 Plain Text Tabs (No icons)
+tab1, tab2, tab3 = st.tabs(["Upload & Analyze Resume", "RAG Chat Assistant", "Qdrant Knowledge Inspector"])
 
 # --- TAB 1: UPLOAD & ANALYZE ---
 with tab1:
@@ -73,7 +73,7 @@ with tab2:
 
 # --- TAB 3: QDRANT KNOWLEDGE INSPECTOR ---
 with tab3:
-    st.header("🔍 Qdrant Knowledge Inspector")
+    st.header("Qdrant Knowledge Inspector")
     st.write("Test similarity vector search directly against Qdrant storage.")
     
     test_query = st.text_input("Enter query to inspect matching chunks:", value="experience")
