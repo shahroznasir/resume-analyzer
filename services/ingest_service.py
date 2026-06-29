@@ -21,8 +21,8 @@ def ingest_document_text(text: str, source_filename: str = "active_resume") -> i
     vector_store.clear_collection()
 
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200,
+        chunk_size=2000,
+        chunk_overlap=400,
         separators=["\n\n", "\n", ". ", " ", ""]
     )
 
