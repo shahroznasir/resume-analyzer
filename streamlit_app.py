@@ -18,7 +18,8 @@ try:
     health_check = requests.get(f"{API_BASE_URL}/", timeout=1.5)
     if health_check.status_code in [200, 307]:
         backend_online = True
-except Exception:
+except requests.RequestException as conn_err:
+    _ = conn_err
     backend_online = False
 
 if "session_id" not in st.session_state:
@@ -37,7 +38,8 @@ if session_id != st.session_state.session_id:
             res = requests.get(f"{API_BASE_URL}/chat/history/{session_id}")
             if res.status_code == 200:
                 st.session_state.messages = res.json().get("history", [])
-        except Exception:
+        except requests.RequestException as hist_err:
+            _ = hist_err
             st.session_state.messages = []
 
 if st.sidebar.button("Start New Session"):
@@ -69,11 +71,11 @@ for msg in st.session_state.messages:
     with st.chat_message(role):
         st.write(msg["content"])
 
-def stream_response(session_id, message):
+def stream_response(sess_id, message):
     try:
         response = requests.post(
             f"{API_BASE_URL}/chat/stream",
-            json={"session_id": session_id, "message": message},
+            json={"session_id": sess_id, "message": message},
             stream=True
         )
         for line in response.iter_lines():
@@ -82,8 +84,8 @@ def stream_response(session_id, message):
                 if decoded.startswith("data: "):
                     data = json.loads(decoded[6:])
                     yield data.get("token", "")
-    except Exception as e:
-        yield f"Error: {e}"
+    except requests.RequestException as stream_err:
+        yield f"Error: {stream_err}"
 
 user_input = st.chat_input("Enter your message...")
 
@@ -94,6 +96,6 @@ if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("assistant"):
         response_generator = stream_response(st.session_state.session_id, user_input)
-        full_response = st.write_stream(response_generator)
+        full_response = st.write_stream(response_generator)  # type: ignore # noqa
         
     st.session_state.messages.append({"role": "model", "content": full_response})
