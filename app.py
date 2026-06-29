@@ -24,9 +24,9 @@ def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
     openapi_schema = get_openapi(
-        title=app.title,
-        version=app.version,
-        description=app.description,
+        title=getattr(app, "title", "Resume Analyzer"),
+        version=getattr(app, "version", "0.1.0"),
+        description=getattr(app, "description", ""),
         routes=app.routes,
     )
     if "components" in openapi_schema and "schemas" in openapi_schema["components"]:
@@ -44,17 +44,17 @@ UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def save_active_resume(filename: str, file_bytes: bytes):
-    RESUME_DIR = "resume"
-    if os.path.exists(RESUME_DIR):
-        for f in os.listdir(RESUME_DIR):
+    resume_dir = "resume"
+    if os.path.exists(resume_dir):
+        for f in os.listdir(resume_dir):
             try:
-                os.remove(os.path.join(RESUME_DIR, f))
+                os.remove(os.path.join(resume_dir, f))
             except Exception as e:
                 print(f"Error cleaning resume folder: {e}")
     else:
-        os.makedirs(RESUME_DIR, exist_ok=True)
+        os.makedirs(resume_dir, exist_ok=True)
     
-    active_resume_path = os.path.join(RESUME_DIR, filename)
+    active_resume_path = os.path.join(resume_dir, filename)
     with open(active_resume_path, "wb") as buffer:
         buffer.write(file_bytes)
 
@@ -143,10 +143,12 @@ async def analyze_resume_api(
             num_chunks = ingest_document_text(resume_text, file.filename)
             return ResumeResponse(
                 candidate_name=file.filename,
-                summary=f"Book/Document '{file.filename}' processed successfully ({num_chunks} vector chunks indexed into Qdrant).",
-                key_skills=["Document Vector Search", "Qdrant RAG"],
-                work_experience=[],
-                education=[]
+                experience_years=0,
+                skills=["Document Vector Search", "Qdrant RAG"],
+                education=[f"Book/Document '{file.filename}' indexed into Qdrant DB ({num_chunks} vector chunks)."],
+                strengths=["RAG Knowledge Search Enabled"],
+                weaknesses=[],
+                overall_score=100
             )
     except CircuitOpenException as ce:
         raise HTTPException(
@@ -277,24 +279,17 @@ async def chat_stream_api(request: ChatRequest):
             yield f"data: {json.dumps({'token': blocked_msg})}\n\n"
         return StreamingResponse(blocked_generator(), media_type="text/event-stream")
 
-    # Fetch short-term history
     history = get_session_memory(request.session_id)
-    
     async def sse_generator():
         full_response = []
         for chunk in stream_chat_response(request.message, history):
             full_response.append(chunk)
             yield f"data: {json.dumps({'token': chunk})}\n\n"
-        
         assistant_reply = "".join(full_response)
-        
-        # Save messages to both short-term memory and long-term DB
         save_message_to_db(request.session_id, "user", request.message)
         update_session_memory(request.session_id, "user", request.message)
-        
         save_message_to_db(request.session_id, "model", assistant_reply)
         update_session_memory(request.session_id, "model", assistant_reply)
-
     return StreamingResponse(sse_generator(), media_type="text/event-stream")
 
 
