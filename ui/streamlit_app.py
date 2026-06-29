@@ -23,8 +23,8 @@ with tab1:
                         st.json(res.json())
                     else:
                         st.error(f"Error ({res.status_code}): {res.text}")
-                except Exception as e:
-                    st.error("Failed to connect to backend server. Make sure uvicorn is running.")
+                except requests.RequestException as req_err:
+                    st.error(f"Failed to connect to backend server ({req_err}). Make sure uvicorn is running.")
 
 with tab2:
     st.header("Chat with Book Assistant")
@@ -61,8 +61,8 @@ with tab2:
                             message_placeholder.write(full_response + "▌")
                 message_placeholder.write(full_response)
                 st.session_state.messages.append({"role": "assistant", "content": full_response})
-            except Exception as e:
-                st.error(f"Error: {e}")
+            except requests.RequestException as stream_err:
+                st.error(f"Error streaming response: {stream_err}")
 with tab3:
     st.header("Qdrant Knowledge Inspector")
     st.write("Test similarity vector search directly against Qdrant storage.")
@@ -77,5 +77,5 @@ with tab3:
                 for i, r in enumerate(results):
                     with st.expander(f"Chunk {i+1} (Similarity Score: {r['score']:.4f})"):
                         st.write(r["text"])
-            except Exception as e:
-                st.error(f"Error querying Qdrant: {e}")
+            except Exception as qdrant_err:  # noqa
+                st.error(f"Error querying Qdrant: {qdrant_err}")
